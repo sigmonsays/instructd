@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os/exec"
 )
 
 type CommandHandler struct {
@@ -17,6 +20,14 @@ func (me *CommandHandler) sendError(w http.ResponseWriter, r *http.Request, msg 
 
 type ExecRequest struct {
 	Id string
+}
+
+type ExecResponse struct {
+	Error    string
+	ExitCode int
+	Pid      int
+	StdOut   string
+	StdErr   string
 }
 
 func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -40,4 +51,49 @@ func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	log.Infof("Request %+v", req)
 
+	cd, err := me.findCommand(req.Id)
+	if err != nil {
+		me.sendError(w, r, "findCommand %s", err)
+		return
+	}
+
+	log.Tracef("found command id:%v", cd.Id)
+
+	ctx := context.Background()
+	ret := &ExecResponse{}
+
+	c := exec.CommandContext(ctx, cd.Cmd[0], cd.Cmd[1:]...)
+
+	var (
+		stdout bytes.Buffer
+		stderr bytes.Buffer
+	)
+	c.Stdout = &stdout
+	c.Stderr = &stderr
+
+	err = c.Run()
+	if err != nil {
+		ret.Error = err.Error()
+		// grab exit code
+		if exitError, ok := err.(*exec.ExitError); ok {
+			ret.ExitCode = exitError.ExitCode()
+			ret.Pid = c.ProcessState.Pid()
+		}
+	}
+	ret.StdOut = stdout.String()
+	ret.StdErr = stderr.String()
+
+	// send response
+	rbuf, _ := json.Marshal(ret)
+	w.Write(rbuf)
+
+}
+
+func (me *CommandHandler) findCommand(id string) (*CommandDetail, error) {
+	for _, c := range me.Commands {
+		if c.Id == id {
+			return c, nil
+		}
+	}
+	return nil, fmt.Errorf("command not found")
 }
