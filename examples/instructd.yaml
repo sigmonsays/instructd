@@ -1,0 +1,8 @@
+
+http_addr: 127.0.0.1:8944
+verbose: false
+commands:
+  - id: hostname
+  - cmd:
+    - "hostname"
+    - "-f"
