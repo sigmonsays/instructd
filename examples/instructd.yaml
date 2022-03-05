@@ -6,3 +6,7 @@ commands:
     cmd:
     - "hostname"
     - "-f"
+
+  - id: desktop.lock
+    shell: |
+      xdotool key "Control_L+Alt_L+l"

@@ -62,6 +62,15 @@ func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 	ret := &ExecResponse{}
 
+	if len(cd.Cmd) == 0 && cd.Shell == "" {
+		me.sendError(w, r, "shell or cmd required in request")
+		return
+	}
+
+	if len(cd.Cmd) == 0 {
+		cd.Cmd = []string{"sh", "-c", cd.Shell}
+	}
+
 	c := exec.CommandContext(ctx, cd.Cmd[0], cd.Cmd[1:]...)
 
 	var (
