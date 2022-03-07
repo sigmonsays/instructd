@@ -80,6 +80,10 @@ func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c.Stdout = &stdout
 	c.Stderr = &stderr
 
+	for k, v := range cd.Env {
+		c.Env = append(c.Env, fmt.Sprintf("%s=%q", k, v))
+	}
+
 	err = c.Run()
 	if err != nil {
 		ret.Error = err.Error()
