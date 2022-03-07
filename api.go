@@ -14,21 +14,10 @@ type CommandHandler struct {
 	Commands []*CommandDetail
 }
 
-type ErrorResponse struct {
-	Error string `json:"error"`
-}
-
-func (me *CommandHandler) sendError(w http.ResponseWriter, r *http.Request, msg string, args ...interface{}) {
-	ret := &ErrorResponse{}
-	ret.Error = fmt.Sprintf("ERROR: "+msg, args...)
-	buf, _ := json.Marshal(ret)
-	w.Write(buf)
-	log.Tracef("sendError %s", buf)
-}
-
 type ExecRequest struct {
 	Id     string `json:"id"`
 	Body   string `json:"body"`
+	Pwd    string `json:"pwd"`
 	StdOut bool   `json:"stdout"`
 	StdErr bool   `json:"stderr"`
 }
@@ -39,6 +28,18 @@ type ExecResponse struct {
 	Pid      int    `json:"pid"`
 	StdOut   string `json:"stdout"`
 	StdErr   string `json:"stderr"`
+}
+
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
+
+func (me *CommandHandler) sendError(w http.ResponseWriter, r *http.Request, msg string, args ...interface{}) {
+	ret := &ErrorResponse{}
+	ret.Error = fmt.Sprintf("ERROR: "+msg, args...)
+	buf, _ := json.Marshal(ret)
+	w.Write(buf)
+	log.Tracef("sendError %s", buf)
 }
 
 func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -101,6 +102,7 @@ func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if req.StdErr {
 		c.Stderr = &stderr
 	}
+	c.Dir = req.Pwd
 
 	for k, v := range cd.Env {
 		c.Env = append(c.Env, fmt.Sprintf("%s=%q", k, v))
