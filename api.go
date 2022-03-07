@@ -14,20 +14,31 @@ type CommandHandler struct {
 	Commands []*CommandDetail
 }
 
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
+
 func (me *CommandHandler) sendError(w http.ResponseWriter, r *http.Request, msg string, args ...interface{}) {
-	fmt.Fprintf(w, "ERROR: "+msg, args...)
+	ret := &ErrorResponse{}
+	ret.Error = fmt.Sprintf("ERROR: "+msg, args...)
+	buf, _ := json.Marshal(ret)
+	w.Write(buf)
+	log.Tracef("sendError %s", buf)
 }
 
 type ExecRequest struct {
-	Id string
+	Id     string `json:"id"`
+	Body   string `json:"body"`
+	StdOut bool   `json:"stdout"`
+	StdErr bool   `json:"stderr"`
 }
 
 type ExecResponse struct {
-	Error    string
-	ExitCode int
-	Pid      int
-	StdOut   string
-	StdErr   string
+	Error    string `json:"error"`
+	ExitCode int    `json:"exit_code"`
+	Pid      int    `json:"pid"`
+	StdOut   string `json:"stdout"`
+	StdErr   string `json:"stderr"`
 }
 
 func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -42,6 +53,8 @@ func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		me.sendError(w, r, "ReadAll %s", err)
 		return
 	}
+
+	reqvals := NewMapVals(buf)
 
 	err = json.Unmarshal(buf, &req)
 	if err != nil {
@@ -73,12 +86,21 @@ func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	c := exec.CommandContext(ctx, cd.Cmd[0], cd.Cmd[1:]...)
 
+	if req.Body != "" {
+		bin := bytes.NewBufferString(req.Body)
+		c.Stdin = bin
+	}
+
 	var (
 		stdout bytes.Buffer
 		stderr bytes.Buffer
 	)
-	c.Stdout = &stdout
-	c.Stderr = &stderr
+	if reqvals.HasValue("stdout") == false || req.StdOut {
+		c.Stdout = &stdout
+	}
+	if req.StdErr {
+		c.Stderr = &stderr
+	}
 
 	for k, v := range cd.Env {
 		c.Env = append(c.Env, fmt.Sprintf("%s=%q", k, v))
