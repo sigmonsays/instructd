@@ -82,12 +82,11 @@ func (me *JwtAuth) ParseToken(r *http.Request) (*JwtToken, error) {
 
 		return []byte(secret), nil
 	})
-
-	log.Tracef("claims %+v", token.Claims)
-
 	if err != nil {
 		return nil, err
 	}
+
+	log.Tracef("claims %+v", token.Claims)
 	return ret, nil
 }
 

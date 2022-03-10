@@ -33,7 +33,7 @@ type JwtKey struct {
 
 var ErrAccessKeyNotFound = errors.New("No such access key")
 
-func (me *Auth) authenticate(r *http.Request) error {
+func (me *Auth) Authenticate(r *http.Request) error {
 
 	if me.DisableAuth {
 		return nil
