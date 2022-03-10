@@ -11,6 +11,7 @@ import (
 )
 
 type CommandHandler struct {
+	Auth     *Auth
 	Commands []*CommandDetail
 }
 
@@ -47,6 +48,13 @@ func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		me.sendError(w, r, "Method must be POST")
 		return
 	}
+
+	err := me.handleAuth(w, r)
+	if err != nil {
+		me.sendError(w, r, "Auth %s", err)
+		return
+	}
+
 	var req *ExecRequest
 
 	buf, err := ioutil.ReadAll(r.Body)
@@ -133,4 +141,12 @@ func (me *CommandHandler) findCommand(id string) (*CommandDetail, error) {
 		}
 	}
 	return nil, fmt.Errorf("command not found")
+}
+
+func (me *CommandHandler) handleAuth(w http.ResponseWriter, r *http.Request) error {
+
+	jt := ExtractToken(r)
+	log.Tracef("Authenticating request with jwt-token:%q", jt)
+
+	return nil
 }
