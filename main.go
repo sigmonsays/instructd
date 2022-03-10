@@ -30,6 +30,7 @@ func main() {
 
 	api := &CommandHandler{
 		Commands: cfg.Commands,
+		Auth: NewAuth(cfg.Auth),
 	}
 
 	log.Infof("Listening at %s", cfg.HTTPAddr)
