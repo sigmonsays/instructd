@@ -1,9 +1,29 @@
 package main
 
-import "errors"
+import (
+	"errors"
+	"net/http"
+)
+
+func NewAuth(creds map[string]*JwtCredential) *Auth {
+	ret := &Auth{}
+
+	if creds == nil || len(creds) == 0 {
+		ret.DisableAuth = true
+		return ret
+	}
+
+	backend := NewJwtAuth()
+	ret.backend = backend
+	for accessKey, cred := range creds {
+		backend.Creds[accessKey] = cred
+	}
+	return ret
+}
 
 type Auth struct {
-	Keys map[string]*JwtKey
+	backend     *JwtAuth
+	DisableAuth bool
 }
 
 type JwtKey struct {
@@ -13,10 +33,18 @@ type JwtKey struct {
 
 var ErrAccessKeyNotFound = errors.New("No such access key")
 
-func (me *Auth) GetAccessKey(k string) (*JwtKey, error) {
-	jwtKey, found := me.Keys[k]
-	if found == false {
-		return nil, ErrAccessKeyNotFound
+func (me *Auth) Authenticate(r *http.Request) error {
+
+	if me.DisableAuth {
+		return nil
 	}
-	return jwtKey, nil
+
+	authRes, err := me.backend.ParseToken(r)
+	if err != nil {
+		return err
+	}
+
+	log.Tracef("auth results %+v", authRes)
+
+	return nil
 }

@@ -148,5 +148,10 @@ func (me *CommandHandler) handleAuth(w http.ResponseWriter, r *http.Request) err
 	jt := ExtractToken(r)
 	log.Tracef("Authenticating request with jwt-token:%q", jt)
 
+	err := me.Auth.Authenticate(r)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

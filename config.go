@@ -9,9 +9,10 @@ import (
 )
 
 type Config struct {
-	HTTPAddr string           `yaml:"http_addr"`
-	Verbose  bool             `yaml:"verbose"`
-	Commands []*CommandDetail `yaml:"commands"`
+	HTTPAddr string                    `yaml:"http_addr"`
+	Verbose  bool                      `yaml:"verbose"`
+	Commands []*CommandDetail          `yaml:"commands"`
+	Auth     map[string]*JwtCredential `yaml:"auth"`
 }
 
 func (c *Config) LoadYaml(path string) error {

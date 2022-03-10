@@ -1,5 +1,9 @@
 
-http_addr: 127.0.0.1:8944
+http_addr: 0.0.0.0:8945
+auth:
+   foobar:
+     secret_key: asdf
+
 verbose: false
 commands:
   - id: hostname
