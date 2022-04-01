@@ -78,11 +78,13 @@ func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	log.Infof("Request %+v", req)
 
-	cd, err := me.findCommand(req.Id)
+	ocd, err := me.findCommand(req.Id)
 	if err != nil {
 		me.sendError(w, r, "findCommand %s", err)
 		return
 	}
+
+	cd := ocd.Duplicate()
 
 	log.Tracef("found command id:%v", cd.Id)
 
@@ -108,10 +110,14 @@ func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	cd.Cmd = append(cd.Cmd, req.Args...)
 
+	log.Tracef("built command %+v", cd.Cmd)
+
 	c := exec.CommandContext(ctx, cd.Cmd[0], cd.Cmd[1:]...)
 
 	for k, v := range req.Env {
-		c.Env = append(c.Env, k+"="+shellescape.Quote(v))
+		e := k + "=" + shellescape.Quote(v)
+		log.Tracef("command env %s", e)
+		c.Env = append(c.Env, e)
 	}
 
 	if req.Body != "" {

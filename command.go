@@ -6,3 +6,8 @@ type CommandDetail struct {
 	Cmd   []string
 	Env   map[string]string
 }
+
+func (me *CommandDetail) Duplicate() *CommandDetail {
+	cd := *me
+	return &cd
+}
