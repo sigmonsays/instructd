@@ -8,19 +8,24 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os/exec"
+
+	"github.com/alessio/shellescape"
 )
 
 type CommandHandler struct {
 	Auth     *Auth
+	Security *Security
 	Commands []*CommandDetail
 }
 
 type ExecRequest struct {
-	Id     string `json:"id"`
-	Body   string `json:"body"`
-	Pwd    string `json:"pwd"`
-	StdOut bool   `json:"stdout"`
-	StdErr bool   `json:"stderr"`
+	Id     string            `json:"id"`
+	Body   string            `json:"body"`
+	Pwd    string            `json:"pwd"`
+	StdOut bool              `json:"stdout"`
+	StdErr bool              `json:"stderr"`
+	Env    map[string]string `json:"env"`
+	Args   []string          `json:"args"`
 }
 
 type ExecResponse struct {
@@ -89,11 +94,25 @@ func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if me.Security.AllowEnv == false && len(req.Env) > 0 {
+		me.sendError(w, r, "passing env not allowed")
+		return
+	}
+	if me.Security.AllowArgs == false && len(req.Args) > 0 {
+		me.sendError(w, r, "passing args not allowed")
+		return
+	}
+
 	if len(cd.Cmd) == 0 {
 		cd.Cmd = []string{"sh", "-c", cd.Shell}
 	}
+	cd.Cmd = append(cd.Cmd, req.Args...)
 
 	c := exec.CommandContext(ctx, cd.Cmd[0], cd.Cmd[1:]...)
+
+	for k, v := range req.Env {
+		c.Env = append(c.Env, k+"="+shellescape.Quote(v))
+	}
 
 	if req.Body != "" {
 		bin := bytes.NewBufferString(req.Body)

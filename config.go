@@ -13,6 +13,7 @@ type Config struct {
 	Verbose  bool                      `yaml:"verbose"`
 	Commands []*CommandDetail          `yaml:"commands"`
 	Auth     map[string]*JwtCredential `yaml:"auth"`
+	Security *Security                 `yaml:"security"`
 }
 
 func (c *Config) LoadYaml(path string) error {
@@ -47,6 +48,13 @@ func (c *Config) LoadYamlBuffer(buf []byte) error {
 }
 
 func (c *Config) FixupConfig() error {
+
+	if c.Auth == nil {
+		c.Auth = make(map[string]*JwtCredential, 0)
+	}
+	if c.Security == nil {
+		c.Security = &Security{}
+	}
 
 	return nil
 }

@@ -7,4 +7,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 )
 
-require github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
+require (
+	github.com/alessio/shellescape v1.4.1 // indirect
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
+)
