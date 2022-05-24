@@ -19,6 +19,8 @@ type CommandHandler struct {
 }
 
 type ExecRequest struct {
+	Values *MapVals
+
 	Id     string            `json:"id"`
 	Body   string            `json:"body"`
 	Pwd    string            `json:"pwd"`
@@ -48,11 +50,59 @@ func (me *CommandHandler) sendError(w http.ResponseWriter, r *http.Request, msg 
 	log.Tracef("sendError %s", buf)
 }
 
-func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		me.sendError(w, r, "Method must be POST")
-		return
+func (me *CommandHandler) readRequest(w http.ResponseWriter, r *http.Request) (*ExecRequest, error) {
+	if r.Method == "POST" {
+		return me.readPostRequest(w, r)
 	}
+
+	if r.Method == "GET" {
+		return me.readGetRequest(w, r)
+	}
+
+	return nil, fmt.Errorf("Unsupported metthod: %s", r.Method)
+}
+
+func (me *CommandHandler) readPostRequest(w http.ResponseWriter, r *http.Request) (*ExecRequest, error) {
+	req := &ExecRequest{}
+
+	buf, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	reqvals := NewMapVals(buf)
+
+	err = json.Unmarshal(buf, &req)
+	if err != nil {
+		return nil, err
+	}
+
+	if req != nil {
+		req.Values = reqvals
+	}
+
+	log.Infof("POST request %+v", req)
+	return req, nil
+}
+
+func (me *CommandHandler) readGetRequest(w http.ResponseWriter, r *http.Request) (*ExecRequest, error) {
+	req := &ExecRequest{}
+
+	q := r.URL.Query()
+	reqvals := NewMapValsFromUrlValues(q)
+
+	// todo: Not all params are supported with GET
+	req.Id = q.Get("id")
+
+	if req != nil {
+		req.Values = reqvals
+	}
+
+	log.Infof("GET Request %+v", req)
+	return req, nil
+}
+
+func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	err := me.handleAuth(w, r)
 	if err != nil {
@@ -60,23 +110,11 @@ func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req *ExecRequest
-
-	buf, err := ioutil.ReadAll(r.Body)
+	req, err := me.readRequest(w, r)
 	if err != nil {
-		me.sendError(w, r, "ReadAll %s", err)
+		me.sendError(w, r, "readRequest %s", err)
 		return
 	}
-
-	reqvals := NewMapVals(buf)
-
-	err = json.Unmarshal(buf, &req)
-	if err != nil {
-		me.sendError(w, r, "ReadAll %s", err)
-		return
-	}
-
-	log.Infof("Request %+v", req)
 
 	ocd, err := me.findCommand(req.Id)
 	if err != nil {
@@ -129,7 +167,7 @@ func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		stdout bytes.Buffer
 		stderr bytes.Buffer
 	)
-	if reqvals.HasValue("stdout") == false || req.StdOut {
+	if req.Values.HasValue("stdout") == false || req.StdOut {
 		c.Stdout = &stdout
 	}
 	if req.StdErr {
