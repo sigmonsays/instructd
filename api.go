@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os/exec"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/alessio/shellescape"
@@ -72,8 +74,29 @@ func (me *CommandHandler) readGetRequest(w http.ResponseWriter, r *http.Request)
 	q := r.URL.Query()
 	reqvals := NewMapValsFromUrlValues(q)
 
-	// todo: Not all params are supported with GET
+	// load exec request from url params
 	req.Id = q.Get("id")
+	req.Pwd = q.Get("pwd")
+	stdout, err := strconv.ParseBool(q.Get("stdout"))
+	if err == nil {
+		req.StdOut = stdout
+	}
+	stderr, err := strconv.ParseBool(q.Get("stderr"))
+	if err == nil {
+		req.StdErr = stderr
+	}
+	for k, vals := range q {
+		if strings.HasPrefix(k, "env.") == false {
+			continue
+		}
+		if len(k) <= 4 {
+			continue
+		}
+		// k is "env.FOO"
+		k := k[4:]
+		req.Env[k] = vals[0]
+	}
+	req.Args = q["args"]
 
 	if req != nil {
 		req.Values = reqvals
