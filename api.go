@@ -190,6 +190,16 @@ func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ret.StdOut = stdout.String()
 	ret.StdErr = stderr.String()
 
+	// interpret response code
+	httpCode := 0
+	if ret.ExitCode == 0 {
+		httpCode = 200
+	} else {
+		httpCode = 400
+	}
+	reqctx.Printf("http_code=%d", httpCode)
+	w.WriteHeader(httpCode)
+
 	// send response
 	rbuf, _ := json.Marshal(ret)
 	w.Write(rbuf)
