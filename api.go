@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os/exec"
+	"time"
 
 	"github.com/alessio/shellescape"
 )
@@ -16,26 +17,6 @@ type CommandHandler struct {
 	Auth     *Auth
 	Security *Security
 	Commands []*CommandDetail
-}
-
-type ExecRequest struct {
-	Values *MapVals
-
-	Id     string            `json:"id"`
-	Body   string            `json:"body"`
-	Pwd    string            `json:"pwd"`
-	StdOut bool              `json:"stdout"`
-	StdErr bool              `json:"stderr"`
-	Env    map[string]string `json:"env"`
-	Args   []string          `json:"args"`
-}
-
-type ExecResponse struct {
-	Error    string `json:"error"`
-	ExitCode int    `json:"exit_code"`
-	Pid      int    `json:"pid"`
-	StdOut   string `json:"stdout"`
-	StdErr   string `json:"stderr"`
 }
 
 type ErrorResponse struct {
@@ -104,6 +85,16 @@ func (me *CommandHandler) readGetRequest(w http.ResponseWriter, r *http.Request)
 
 func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
+	reqctx := NewReqContext()
+	me.logStart(w, r, reqctx)
+
+	defer func() {
+		reqctx.Stop()
+		reqctx.Printf("dur_ms=%d", reqctx.DurationMs())
+		buf := reqctx.String()
+		fmt.Printf("%s\n", buf)
+	}()
+
 	err := me.handleAuth(w, r)
 	if err != nil {
 		me.sendError(w, r, "Auth %s", err)
@@ -125,6 +116,8 @@ func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	cd := ocd.Duplicate()
 
 	log.Tracef("found command id:%v", cd.Id)
+
+	reqctx.AppendKV("cmd", cd.Id)
 
 	ctx := context.Background()
 	ret := &ExecResponse{}
@@ -149,6 +142,8 @@ func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	cd.Cmd = append(cd.Cmd, req.Args...)
 
 	log.Tracef("built command %+v", cd.Cmd)
+
+	started := time.Now()
 
 	c := exec.CommandContext(ctx, cd.Cmd[0], cd.Cmd[1:]...)
 
@@ -188,6 +183,10 @@ func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			ret.Pid = c.ProcessState.Pid()
 		}
 	}
+	stopped := time.Now()
+	cmdDur := stopped.Sub(started)
+
+	ret.DurMs = int64(cmdDur.Milliseconds())
 	ret.StdOut = stdout.String()
 	ret.StdErr = stderr.String()
 
@@ -195,6 +194,24 @@ func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rbuf, _ := json.Marshal(ret)
 	w.Write(rbuf)
 
+}
+
+func (me *CommandHandler) logStart(w http.ResponseWriter, r *http.Request, reqctx *ReqContext) {
+	reqctx.Start()
+	reqctx.Append("INSTRUCTD")
+	reqctx.Printf("ts=%d", time.Now().Unix())
+	reqctx.AppendKV("method", r.Method)
+	reqctx.AppendKV("path", r.URL.Path)
+	reqctx.AppendKV("client_ip", me.getClientIP(w, r))
+}
+
+func (me *CommandHandler) getClientIP(w http.ResponseWriter, r *http.Request) string {
+	// prefer X-Forwarded-For
+	fwdfor := r.Header.Get("X-Forwarded-For")
+	if fwdfor != "" {
+		return fwdfor
+	}
+	return r.RemoteAddr
 }
 
 func (me *CommandHandler) findCommand(id string) (*CommandDetail, error) {

@@ -5,7 +5,15 @@ auth:
      secret_key: asdf
 
 verbose: false
+
 commands:
+
+  - id: false
+    shell: false
+
+  - id: sleep
+    shell: sleep 1
+
   - id: hostname
     cmd:
     - "hostname"
