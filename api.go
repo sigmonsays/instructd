@@ -37,6 +37,7 @@ type ExecResponse struct {
 	Pid      int    `json:"pid"`
 	StdOut   string `json:"stdout"`
 	StdErr   string `json:"stderr"`
+	DurMs    int64  `json:"dur_ms"`
 }
 
 type ErrorResponse struct {
@@ -163,6 +164,8 @@ func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	log.Tracef("built command %+v", cd.Cmd)
 
+	started := time.Now()
+
 	c := exec.CommandContext(ctx, cd.Cmd[0], cd.Cmd[1:]...)
 
 	for k, v := range req.Env {
@@ -201,6 +204,10 @@ func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			ret.Pid = c.ProcessState.Pid()
 		}
 	}
+	stopped := time.Now()
+	cmdDur := stopped.Sub(started)
+
+	ret.DurMs = int64(cmdDur.Milliseconds())
 	ret.StdOut = stdout.String()
 	ret.StdErr = stderr.String()
 
