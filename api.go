@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os/exec"
+	"time"
 
 	"github.com/alessio/shellescape"
 )
@@ -104,6 +105,16 @@ func (me *CommandHandler) readGetRequest(w http.ResponseWriter, r *http.Request)
 
 func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
+	reqctx := NewReqContext()
+	me.logStart(w, r, reqctx)
+
+	defer func() {
+		reqctx.Stop()
+		reqctx.Printf("dur_ms=%d", reqctx.DurationMs())
+		buf := reqctx.String()
+		fmt.Printf("%s\n", buf)
+	}()
+
 	err := me.handleAuth(w, r)
 	if err != nil {
 		me.sendError(w, r, "Auth %s", err)
@@ -125,6 +136,8 @@ func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	cd := ocd.Duplicate()
 
 	log.Tracef("found command id:%v", cd.Id)
+
+	reqctx.AppendKV("cmd", cd.Id)
 
 	ctx := context.Background()
 	ret := &ExecResponse{}
@@ -195,6 +208,24 @@ func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rbuf, _ := json.Marshal(ret)
 	w.Write(rbuf)
 
+}
+
+func (me *CommandHandler) logStart(w http.ResponseWriter, r *http.Request, reqctx *ReqContext) {
+	reqctx.Start()
+	reqctx.Append("INSTRUCTD")
+	reqctx.Printf("ts=%d", time.Now().Unix())
+	reqctx.AppendKV("method", r.Method)
+	reqctx.AppendKV("path", r.URL.Path)
+	reqctx.AppendKV("client_ip", me.getClientIP(w, r))
+}
+
+func (me *CommandHandler) getClientIP(w http.ResponseWriter, r *http.Request) string {
+	// prefer X-Forwarded-For
+	fwdfor := r.Header.Get("X-Forwarded-For")
+	if fwdfor != "" {
+		return fwdfor
+	}
+	return r.RemoteAddr
 }
 
 func (me *CommandHandler) findCommand(id string) (*CommandDetail, error) {
