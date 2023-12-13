@@ -14,5 +14,7 @@ mkShell {
     godef
     gotools
 
+    mpg123
+
   ];
 }
