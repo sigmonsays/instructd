@@ -160,7 +160,7 @@ func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(cd.Cmd) == 0 {
-		cd.Cmd = []string{"sh", "-c", cd.Shell}
+		cd.Cmd = []string{"/usr/bin/env", "sh", "-c", cd.Shell}
 	}
 	cd.Cmd = append(cd.Cmd, req.Args...)
 
