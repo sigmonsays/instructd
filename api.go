@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -79,13 +80,21 @@ func (me *CommandHandler) readGetRequest(w http.ResponseWriter, r *http.Request)
 	// load exec request from url params
 	req.Id = q.Get("id")
 	req.Pwd = q.Get("pwd")
-	stdout, err := strconv.ParseBool(q.Get("stdout"))
-	if err == nil {
-		req.StdOut = stdout
+	if q.Get("stdout") == "" {
+		req.StdOut = true
+	} else {
+		stdout, err := strconv.ParseBool(q.Get("stdout"))
+		if err == nil {
+			req.StdOut = stdout
+		}
 	}
-	stderr, err := strconv.ParseBool(q.Get("stderr"))
-	if err == nil {
-		req.StdErr = stderr
+	if q.Get("stderr") == "" {
+		req.StdErr = true
+	} else {
+		stderr, err := strconv.ParseBool(q.Get("stderr"))
+		if err == nil {
+			req.StdErr = stderr
+		}
 	}
 	for k, vals := range q {
 		if strings.HasPrefix(k, "env.") == false {
@@ -194,6 +203,9 @@ func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		c.Stderr = &stderr
 	}
 	c.Dir = req.Pwd
+
+	// inheirit the processes env
+	c.Env = os.Environ()
 
 	for k, v := range cd.Env {
 		c.Env = append(c.Env, fmt.Sprintf("%s=%q", k, v))
