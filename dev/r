@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -x
+gi || exit 1
+
+exec reflex -s -r '(\.html$|\.go$)' -- build-and-run "$@"
