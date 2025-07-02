@@ -5,16 +5,17 @@ with pkgs;
 mkShell {
   buildInputs = [
     git
-    gomod2nix
+    #gomod2nix
     nixpkgs-fmt
 
     # Go development
-    go_1_20
+    go
     gopls
     godef
     gotools
 
     mpg123
+    openssl
 
   ];
 }

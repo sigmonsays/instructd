@@ -69,7 +69,9 @@ func (me *CommandHandler) readPostRequest(w http.ResponseWriter, r *http.Request
 }
 
 func (me *CommandHandler) readGetRequest(w http.ResponseWriter, r *http.Request) (*ExecRequest, error) {
-	req := &ExecRequest{}
+	req := &ExecRequest{
+		Env: make(map[string]string, 0),
+	}
 
 	q := r.URL.Query()
 	reqvals := NewMapValsFromUrlValues(q)
