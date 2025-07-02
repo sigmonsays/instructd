@@ -34,6 +34,13 @@ func main() {
 		Security: cfg.Security,
 	}
 
+	if cfg.Security.AllowEnv {
+		log.Infof("Security notice, passing env via HTTP is allowed")
+	}
+	if cfg.Security.AllowArgs {
+		log.Infof("Security notice, passing args via HTTP is allowed")
+	}
+
 	log.Infof("Listening at %s", cfg.HTTPAddr)
 	err := http.ListenAndServe(cfg.HTTPAddr, api)
 	if err != nil {

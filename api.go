@@ -181,9 +181,12 @@ func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	c := exec.CommandContext(ctx, cd.Cmd[0], cd.Cmd[1:]...)
 
+	// inheirit the processes env
+	c.Env = os.Environ()
+
 	for k, v := range req.Env {
 		e := k + "=" + shellescape.Quote(v)
-		log.Tracef("command env %s", e)
+		log.Tracef("set request env %s", e)
 		c.Env = append(c.Env, e)
 	}
 
@@ -204,11 +207,10 @@ func (me *CommandHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	c.Dir = req.Pwd
 
-	// inheirit the processes env
-	c.Env = os.Environ()
-
+	// add extra env
 	for k, v := range cd.Env {
 		c.Env = append(c.Env, fmt.Sprintf("%s=%q", k, v))
+		log.Debugf("set config env %s = %s", k, v)
 	}
 
 	err = c.Run()
