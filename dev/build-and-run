@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -x
+gi || exit 1
+instructd -loglevel debug -config ~/instructd.yaml "$@"
